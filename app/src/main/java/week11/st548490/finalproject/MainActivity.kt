@@ -25,6 +25,8 @@ import week11.st548490.finalproject.ui.auth.SignUpScreen
 import week11.st548490.finalproject.ui.events.CreateEventScreen
 import week11.st548490.finalproject.ui.events.EditEventScreen
 import week11.st548490.finalproject.ui.events.EventDetailsScreen
+import week11.st548490.finalproject.ui.expenses.AddExpenseScreen
+import week11.st548490.finalproject.ui.expenses.ExpenseListScreen
 import week11.st548490.finalproject.ui.main.MainScreen
 import week11.st548490.finalproject.ui.notifications.NotificationsScreen
 import week11.st548490.finalproject.ui.profile.ProfileScreen
@@ -107,6 +109,15 @@ fun EventSyncApp() {
             val eventId = backStackEntry.arguments?.getString("eventId")
             EventDetailsScreen(navController = navController, eventId = eventId)
         }
+        //expense screen
+        composable(Screen.Expenses.route) {
+            ExpenseListScreen(navController)
+        }
+        composable(Screen.AddExpense.route) {
+            AddExpenseScreen(navController)
+        }
+
+
         composable(Screen.Notifications.route) {
             NotificationsScreen(navController = navController)
         }

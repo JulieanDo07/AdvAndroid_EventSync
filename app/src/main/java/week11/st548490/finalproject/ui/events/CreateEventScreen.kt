@@ -64,6 +64,7 @@ import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import week11.st548490.finalproject.R
 import week11.st548490.finalproject.data.models.User
+import week11.st548490.finalproject.navigation.Screen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -336,6 +337,29 @@ fun CreateEventScreen(navController: NavController) {
                     placeholder = { Text("Per Person") },
                     readOnly = true,
                     shape = RoundedCornerShape(12.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Edit/add expenses
+            Button(
+                onClick = {
+                    navController.navigate(Screen.Expenses.route)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFCFFFD5),
+                    contentColor = Color.Black
+                )
+            ) {
+                Text(
+                    text = "Edit Expenses",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
 

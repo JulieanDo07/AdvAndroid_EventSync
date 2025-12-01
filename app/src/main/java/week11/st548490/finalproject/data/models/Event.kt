@@ -9,7 +9,7 @@ data class Event(
     val description: String = "",
     val date: Timestamp = Timestamp.now(),
     val time: String = "",
-    val themeColor: String = "#4FC3F7", // Pastel blue default
+    val themeColor: String = "#4FC3F7",
     val imageUrl: String = "",
     val creatorId: String = "",
     val members: List<String> = emptyList(),

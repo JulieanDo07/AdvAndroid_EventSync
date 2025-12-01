@@ -11,6 +11,11 @@ sealed class Screen(val route: String) {
     object CreateEvent : Screen("create_event")
     object EditEvent : Screen("edit_event")
     object EventDetails : Screen("event_details")
+
+    // Expenses Section - Juliean
+    object Expenses : Screen("expenses")
+    object AddExpense : Screen("add_expense")
+
     object Notifications : Screen("notifications")
     object Profile : Screen("profile")
 }
