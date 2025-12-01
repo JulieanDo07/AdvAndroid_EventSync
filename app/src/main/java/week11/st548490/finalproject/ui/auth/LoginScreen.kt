@@ -57,6 +57,7 @@ fun LoginScreen(
     val uiState by viewModel.uiState.collectAsState()
     val email by viewModel.email.collectAsState()
     val password by viewModel.password.collectAsState()
+    val validationError by viewModel.validationError.collectAsState()
 
     // Handle successful login
     LaunchedEffect(uiState) {
@@ -118,8 +119,29 @@ fun LoginScreen(
                 color = Color.Black
             )
 
+            // Show validation errors or login errors
+            if (validationError.isNotEmpty() || uiState is AuthUiState.Error) {
+                val errorMessage = if (validationError.isNotEmpty()) {
+                    validationError
+                } else {
+                    (uiState as? AuthUiState.Error)?.message ?: ""
+                }
+
+                if (errorMessage.isNotEmpty()) {
+                    Text(
+                        text = errorMessage,
+                        color = Color.Red,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    )
+                }
+            }
+
             // Form
-            Spacer(modifier = Modifier.height(30.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Email Field
             OutlinedTextField(
@@ -143,7 +165,8 @@ fun LoginScreen(
                 },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                isError = validationError.isNotEmpty() || uiState is AuthUiState.Error
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -171,7 +194,8 @@ fun LoginScreen(
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                isError = validationError.isNotEmpty() || uiState is AuthUiState.Error
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -222,7 +246,7 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // SIGN UP PROMPT - This was missing!
+            // SIGN UP PROMPT
             TextButton(
                 onClick = {
                     navController.navigate(Screen.SignUp.route)
@@ -231,28 +255,19 @@ fun LoginScreen(
             ) {
                 Text(
                     text = "Don't have an account? ",
-                    fontSize = 14.sp, // Slightly larger for better visibility
+                    fontSize = 14.sp,
                     color = Color.Gray
                 )
                 Text(
                     text = "Create Account",
                     fontSize = 14.sp,
-                    color = Color(0xFF2196F3), // Blue color
+                    color = Color(0xFF2196F3),
                     fontWeight = FontWeight.Bold
                 )
             }
 
             // Add extra space at the bottom for scrolling
             Spacer(modifier = Modifier.height(40.dp))
-        }
-
-        // Error handling
-        if (uiState is AuthUiState.Error) {
-            val errorMessage = (uiState as AuthUiState.Error).message
-            LaunchedEffect(uiState) {
-                println("Login error: $errorMessage")
-                viewModel.resetState()
-            }
         }
     }
 }

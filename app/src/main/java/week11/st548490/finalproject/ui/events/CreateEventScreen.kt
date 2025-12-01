@@ -1,5 +1,8 @@
 package week11.st548490.finalproject.ui.events
 
+
+
+import android.app.DatePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -52,19 +55,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 import week11.st548490.finalproject.R
 import week11.st548490.finalproject.data.models.User
 import week11.st548490.finalproject.navigation.Screen
+import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,6 +89,7 @@ fun CreateEventScreen(navController: NavController) {
     LaunchedEffect(Unit) {
         viewModel.loadUsers()
     }
+
 
     var eventName by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -96,12 +109,33 @@ fun CreateEventScreen(navController: NavController) {
         "#F48FB1"  // Pastel Pink
     )
 
-    // Handle successful event creation
-    LaunchedEffect(createEventState) {
-        if (createEventState is CreateEventState.Success) {
-            navController.popBackStack()
-        }
+
+
+    LaunchedEffect(navController) {
+        navController.currentBackStackEntry?.savedStateHandle
+            ?.getStateFlow("selectedLocation", "")
+            ?.collect { newLocation ->
+                if (newLocation.isNotEmpty()) {
+                    location = newLocation
+                }
+            }
     }
+
+
+    val context = LocalContext.current
+
+    val calendar = Calendar.getInstance()
+
+    val datePicker = DatePickerDialog(
+        context,
+        { _, year, month, day ->
+            selectedDate = "$day/${month + 1}/$year"
+        },
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH),
+        calendar.get(Calendar.DAY_OF_MONTH)
+    )
+
 
     Scaffold(
         topBar = {
@@ -195,26 +229,32 @@ fun CreateEventScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(16.dp))
 
             // Date and Time Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
             ) {
                 OutlinedTextField(
                     value = selectedDate,
-                    onValueChange = { selectedDate = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Date") },
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                OutlinedTextField(
-                    value = selectedTime,
-                    onValueChange = { selectedTime = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Time") },
-                    shape = RoundedCornerShape(12.dp)
+                    onValueChange = { },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { datePicker.show() },
+                    placeholder = { Text("Select Date") },
+                    readOnly = true,
+                    shape = RoundedCornerShape(12.dp),
+                    trailingIcon = {
+                        IconButton(
+                            onClick = { datePicker.show() }
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.baseline_calendar_month_24),
+                                contentDescription = "Pick Date"
+                            )
+                        }
+                    }
                 )
             }
+
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -312,33 +352,33 @@ fun CreateEventScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Budget and Per Person Share
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                OutlinedTextField(
-                    value = budget,
-                    onValueChange = { budget = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Budget ($)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                val perPersonShare = if (budget.isNotEmpty() && selectedUsers.isNotEmpty()) {
-                    String.format("%.2f", budget.toDoubleOrNull() ?: 0.0 / (selectedUsers.size + 1))
-                } else "0.00"
-
-                OutlinedTextField(
-                    value = "$$perPersonShare",
-                    onValueChange = { /* Read-only */ },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Per Person") },
-                    readOnly = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
-            }
+//            // Budget and Per Person Share
+//            Row(
+//                modifier = Modifier.fillMaxWidth(),
+//                horizontalArrangement = Arrangement.spacedBy(16.dp)
+//            ) {
+//                OutlinedTextField(
+//                    value = budget,
+//                    onValueChange = { budget = it },
+//                    modifier = Modifier.weight(1f),
+//                    placeholder = { Text("Budget ($)") },
+//                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+//                    shape = RoundedCornerShape(12.dp)
+//                )
+//
+//                val perPersonShare = if (budget.isNotEmpty() && selectedUsers.isNotEmpty()) {
+//                    String.format("%.2f", budget.toDoubleOrNull() ?: 0.0 / (selectedUsers.size + 1))
+//                } else "0.00"
+//
+//                OutlinedTextField(
+//                    value = "$$perPersonShare",
+//                    onValueChange = { /* Read-only */ },
+//                    modifier = Modifier.weight(1f),
+//                    placeholder = { Text("Per Person") },
+//                    readOnly = true,
+//                    shape = RoundedCornerShape(12.dp)
+//                )
+//            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -366,8 +406,12 @@ fun CreateEventScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(24.dp))
 
             // Set Location Button
+            var showMapDialog by remember { mutableStateOf(false) }
+            var location by remember { mutableStateOf("") }
+            var selectedLatLng by remember { mutableStateOf<LatLng?>(null) }
+
             Button(
-                onClick = { /* TODO: Open Google Maps */ },
+                onClick = { showMapDialog = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
@@ -379,6 +423,58 @@ fun CreateEventScreen(navController: NavController) {
             ) {
                 Text("Set Location")
             }
+
+            if (showMapDialog) {
+                Dialog(onDismissRequest = { showMapDialog = false }) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(400.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column {
+                            val cameraPositionState = rememberCameraPositionState {
+                                position = LatLng(43.6532, -79.3832).let {
+                                    CameraPosition.fromLatLngZoom(it, 10f)
+                                }
+                            }
+
+                            GoogleMap(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .weight(1f),
+                                cameraPositionState = cameraPositionState,
+                                onMapClick = { latLng ->
+                                    selectedLatLng = latLng
+                                }
+                            ) {
+                                selectedLatLng?.let {
+                                    Marker(
+                                        state = MarkerState(it),
+                                        title = "Selected Location"
+                                    )
+                                }
+                            }
+
+                            Button(
+                                onClick = {
+                                    selectedLatLng?.let {
+                                        location = "${it.latitude},${it.longitude}"
+                                    }
+                                    showMapDialog = false
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(8.dp)
+                            ) {
+                                Text("Confirm Location")
+                            }
+                        }
+                    }
+                }
+            }
+
+
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -437,9 +533,12 @@ fun CreateEventScreen(navController: NavController) {
                     selectedUsers = it
                     showUserSelection = false
                 },
-                onDismiss = { showUserSelection = false }
+                onDismiss = {
+                    showUserSelection = false
+                }
             )
         }
+
     }
 }
 
@@ -452,7 +551,10 @@ fun UserSelectionDialog(
 ) {
     var tempSelected by remember { mutableStateOf(selectedUsers.toMutableList()) }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()

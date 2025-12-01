@@ -18,6 +18,10 @@ sealed class Screen(val route: String) {
 
     object Notifications : Screen("notifications")
     object Profile : Screen("profile")
+    // Add argument for selected location
+
+
+
 }
 
 // Route helpers
