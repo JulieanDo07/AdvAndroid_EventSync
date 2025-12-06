@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,26 +19,44 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
-
+import kotlinx.coroutines.delay
+import week11.st548490.finalproject.ui.events.EventExpenseViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+// Add this import at the top of your file
+import androidx.compose.foundation.lazy.items
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExpenseListScreen(
     navController: NavController,
-    viewModel: ExpenseViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    expenseViewModel: EventExpenseViewModel = viewModel()
 ) {
-    val items by viewModel.items.collectAsState()
-    val divideBy by viewModel.divideBy.collectAsState()
-    val title by viewModel.title.collectAsState()
-    val attendees by viewModel.attendees.collectAsState()
-    val allPossibleAttendees by viewModel.allPossibleAttendees.collectAsState()
+    val expenseData by expenseViewModel.expenseData.collectAsState()
+    val allPossibleAttendees = listOf(
+        "Lando Norris",
+        "Oscar Piastri",
+        "Max Verstappen",
+        "Juliean Do",
+        "Atin Atin",
+        "Simran Simran"
+    )
 
     var showAttendeeDialog by remember { mutableStateOf(false) }
+    var showSaveSuccess by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    LaunchedEffect(showSaveSuccess) {
+        if (showSaveSuccess) {
+            delay(1500)
+            navController.popBackStack()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -64,8 +81,8 @@ fun ExpenseListScreen(
 
             // Title of Cost Sheet
             OutlinedTextField(
-                value = title,
-                onValueChange = { viewModel.updateTitle(it) },
+                value = expenseData.title,
+                onValueChange = { expenseViewModel.updateTitle(it) },
                 label = { Text("Title of Cost Sheet") },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -74,8 +91,8 @@ fun ExpenseListScreen(
 
             // Divided by how many attendees
             OutlinedTextField(
-                value = divideBy,
-                onValueChange = { viewModel.updateDivideBy(it) },
+                value = expenseData.divideBy,
+                onValueChange = { expenseViewModel.updateDivideBy(it) },
                 label = { Text("Divided by How Many People") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
@@ -94,7 +111,7 @@ fun ExpenseListScreen(
                     .height(260.dp)
                     .border(1.dp, Color.LightGray)
             ) {
-                itemsIndexed(items) { index, item ->
+                itemsIndexed(expenseData.items) { index, item ->
 
                     Row(
                         modifier = Modifier
@@ -105,14 +122,14 @@ fun ExpenseListScreen(
 
                         OutlinedTextField(
                             value = item.name,
-                            onValueChange = { viewModel.updateItemName(index, it) },
+                            onValueChange = { expenseViewModel.updateItemName(index, it) },
                             placeholder = { Text("Enter Name of Item") },
                             modifier = Modifier.weight(1f)
                         )
 
                         OutlinedTextField(
                             value = item.price,
-                            onValueChange = { viewModel.updateItemPrice(index, it) },
+                            onValueChange = { expenseViewModel.updateItemPrice(index, it) },
                             placeholder = { Text("Price ($)") },
                             modifier = Modifier.weight(1f),
                             keyboardOptions = KeyboardOptions(
@@ -125,7 +142,7 @@ fun ExpenseListScreen(
 
             // Add cost item row button
             IconButton(
-                onClick = { viewModel.addItem() },
+                onClick = { expenseViewModel.addItem() },
                 modifier = Modifier
                     .size(40.dp)
                     .align(Alignment.Start)
@@ -136,11 +153,8 @@ fun ExpenseListScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Total cost
-            val totalCost by viewModel.totalCost.collectAsState()
-
             OutlinedTextField(
-                value = totalCost,
-
+                value = expenseData.totalCost,
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Total Cost of Items") },
@@ -167,22 +181,43 @@ fun ExpenseListScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Cost per person
-            val costPerPerson by viewModel.costPerPerson.collectAsState()
-
             OutlinedTextField(
-                value = costPerPerson,
+                value = expenseData.costPerPerson,
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Cost Per Person") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-
             Spacer(modifier = Modifier.height(24.dp))
+
+            // Save success message
+            if (showSaveSuccess) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFE8F5E9)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "✓ Expenses saved successfully!",
+                            color = Color(0xFF4CAF50),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
 
             Button(
                 onClick = {
-                    // add saving logic here later - possibly firebase
+                    showSaveSuccess = true
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -195,7 +230,6 @@ fun ExpenseListScreen(
             ) {
                 Text("Save Expenses", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
-
         }
     }
 
@@ -203,9 +237,9 @@ fun ExpenseListScreen(
     if (showAttendeeDialog) {
         ExpenseAttendeeDialog(
             attendees = allPossibleAttendees,
-            selected = attendees,
+            selected = expenseData.attendees,
             onConfirm = { newList ->
-                viewModel.updateAttendees(newList)
+                expenseViewModel.updateAttendees(newList)
                 showAttendeeDialog = false
             },
             onDismiss = { showAttendeeDialog = false }
@@ -248,16 +282,20 @@ fun ExpenseAttendeeDialog(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // FIX: Use items() function with the list as parameter
                     items(attendees) { person ->
-                    val isSelected = tempSelected.contains(person)
+                        val isSelected = tempSelected.contains(person)
 
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(55.dp)
                                 .clickable {
-                                    if (isSelected) tempSelected.remove(person)
-                                    else tempSelected.add(person)
+                                    if (isSelected) {
+                                        tempSelected.remove(person)
+                                    } else {
+                                        tempSelected.add(person)
+                                    }
                                 },
                             colors = CardDefaults.cardColors(
                                 containerColor = if (isSelected)
@@ -302,15 +340,12 @@ fun ExpenseAttendeeDialog(
                         Text("Cancel")
                     }
                     Button(
-                        onClick = { onConfirm(tempSelected) },
+                        onClick = { onConfirm(tempSelected.toList()) },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C4DFF))
                     ) {
                         Text("Confirm (${tempSelected.size} selected)")
                     }
                 }
-
-
-
             }
         }
     }

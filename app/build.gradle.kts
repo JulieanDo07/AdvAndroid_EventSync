@@ -17,6 +17,13 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Add buildConfigField for API key
+        buildConfigField(
+            type = "String",
+            name = "MAPS_API_KEY",
+            value = "\"AIzaSyAQzMPUKg8P2YQr2Z2VCHYFseaxzY32kOE\""
+        )
     }
 
     buildTypes {
@@ -37,13 +44,13 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true  // Add this line
     }
 }
 
 
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -72,7 +79,19 @@ dependencies {
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.5")
 
+    // Google Maps
     implementation("com.google.android.gms:play-services-maps:18.2.0")
-    implementation("com.google.maps.android:maps-compose:2.11.4")
+    implementation("com.google.maps.android:maps-compose:2.14.0")
 
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
+
+    // Google Maps (still needed for the map display)
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
+    implementation("com.google.maps.android:maps-compose:2.14.0")
+
+    // Places API for search
+    implementation("com.google.android.libraries.places:places:3.3.0")
+
+    // For geocoding (convert address to coordinates)
+    implementation("com.google.maps.android:places-ktx:3.0.0")
 }

@@ -23,10 +23,11 @@ import week11.st548490.finalproject.ui.auth.ForgotPasswordScreen
 import week11.st548490.finalproject.ui.auth.LoginScreen
 import week11.st548490.finalproject.ui.auth.SignUpScreen
 import week11.st548490.finalproject.ui.events.CreateEventScreen
-import week11.st548490.finalproject.ui.events.EditEventScreen
 import week11.st548490.finalproject.ui.events.EventDetailsScreen
+import week11.st548490.finalproject.ui.events.InvitationsScreen
 import week11.st548490.finalproject.ui.expenses.AddExpenseScreen
 import week11.st548490.finalproject.ui.expenses.ExpenseListScreen
+import week11.st548490.finalproject.ui.location.MapScreen
 import week11.st548490.finalproject.ui.location.SetLocationScreen
 import week11.st548490.finalproject.ui.main.MainScreen
 import week11.st548490.finalproject.ui.notifications.NotificationsScreen
@@ -51,9 +52,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-
-
-
 @Composable
 fun EventSyncApp() {
     val navController = rememberNavController()
@@ -71,7 +69,13 @@ fun EventSyncApp() {
             }
         } else {
             // User signed in, navigate to main if not already there
-            if (navController.currentDestination?.route != Screen.Main.route) {
+            val currentRoute = navController.currentDestination?.route
+            if (currentRoute != Screen.Main.route &&
+                currentRoute != Screen.EventDetails.route &&
+                currentRoute != Screen.Invitations.route &&
+                currentRoute != Screen.CreateEvent.route &&
+                currentRoute != Screen.Profile.route &&
+                !currentRoute.orEmpty().startsWith("event_details/")) {
                 navController.navigate(Screen.Main.route) {
                     popUpTo(navController.graph.startDestinationId) {
                         inclusive = true
@@ -100,38 +104,40 @@ fun EventSyncApp() {
         composable(Screen.Main.route) {
             MainScreen(navController = navController, authStateHandler = authStateHandler)
         }
+
         composable(Screen.CreateEvent.route) {
             CreateEventScreen(navController = navController)
         }
+
         composable(
-            route = "event_details/{eventId}",
+            route = Screen.EventDetails.route,
             arguments = listOf(navArgument("eventId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val eventId = backStackEntry.arguments?.getString("eventId")
+            val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
             EventDetailsScreen(navController = navController, eventId = eventId)
         }
-        //expense screen
+
+        // Invitations Screen (NEW)
+        composable(Screen.Invitations.route) {
+            InvitationsScreen(navController = navController)
+        }
+
+        // Expense Screens
         composable(Screen.Expenses.route) {
             ExpenseListScreen(navController)
         }
+
         composable(Screen.AddExpense.route) {
             AddExpenseScreen(navController)
         }
 
-
+        // Notifications Screen (if different from invitations)
         composable(Screen.Notifications.route) {
             NotificationsScreen(navController = navController)
         }
+
         composable(Screen.Profile.route) {
             ProfileScreen(navController = navController, authStateHandler = authStateHandler)
-        }
-        // Add this composable to your NavHost
-        composable(
-            route = "edit_event/{eventId}",
-            arguments = listOf(navArgument("eventId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val eventId = backStackEntry.arguments?.getString("eventId")
-            EditEventScreen(navController = navController, eventId = eventId ?: "")
         }
 
         // Set Location screen
@@ -139,7 +145,21 @@ fun EventSyncApp() {
             SetLocationScreen(navController = navController)
         }
 
-
-
+        // Map Screen for directions
+        composable(
+            route = Screen.MapScreen.route,
+            arguments = listOf(
+                navArgument("eventLocation") {
+                    type = NavType.StringType
+                    nullable = true
+                }
+            )
+        ) { backStackEntry ->
+            val eventLocation = backStackEntry.arguments?.getString("eventLocation")
+            MapScreen(
+                navController = navController,
+                eventLocation = eventLocation
+            )
+        }
     }
 }

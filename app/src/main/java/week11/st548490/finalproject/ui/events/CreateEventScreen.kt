@@ -1,21 +1,13 @@
 package week11.st548490.finalproject.ui.events
 
-import androidx.compose.ui.window.Dialog
+
+import androidx.lifecycle.viewmodel.compose.viewModel
 import android.app.DatePickerDialog
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -27,69 +19,100 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.delay
 import week11.st548490.finalproject.R
 import week11.st548490.finalproject.data.models.User
 import week11.st548490.finalproject.navigation.Screen
 import java.util.Calendar
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEventScreen(navController: NavController) {
     val viewModel: CreateEventViewModel = viewModel()
     val users by viewModel.users.collectAsState()
     val createEventState by viewModel.createEventState.collectAsState()
+    val eventFormData by viewModel.eventFormData.collectAsState()
+    val expenseSummary by viewModel.expenseSummary.collectAsState()
+
+    // Add shared expense ViewModel
+    val expenseViewModel: EventExpenseViewModel = viewModel()
+    val expenseData by expenseViewModel.expenseData.collectAsState()
+
     val currentUser = FirebaseAuth.getInstance().currentUser
+
+    // Get context here
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.loadUsers()
     }
 
-    var eventName by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var selectedDate by remember { mutableStateOf("") }
-    var selectedTime by remember { mutableStateOf("") }
-    var selectedTheme by remember { mutableStateOf("#4FC3F7") } // Pastel blue default
-    var budget by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf("") }
+    // Use local variables from ViewModel
+    var eventName by remember { mutableStateOf(eventFormData.eventName) }
+    var description by remember { mutableStateOf(eventFormData.description) }
+    var selectedDate by remember { mutableStateOf(eventFormData.selectedDate) }
+    var selectedTime by remember { mutableStateOf(eventFormData.selectedTime) }
+    var selectedTheme by remember { mutableStateOf(eventFormData.selectedTheme) }
+    var budget by remember { mutableStateOf(eventFormData.budget) }
+    var location by remember { mutableStateOf(eventFormData.location) }
     var showUserSelection by remember { mutableStateOf(false) }
-    var selectedUsers by remember { mutableStateOf<List<User>>(emptyList()) }
+    var selectedUsers by remember { mutableStateOf(eventFormData.selectedUsers) }
 
+    // Update ViewModel when local variables change
+    LaunchedEffect(eventName, description, selectedDate, selectedTime, selectedTheme, budget, location, selectedUsers) {
+        viewModel.updateFormData { current ->
+            current.copy(
+                eventName = eventName,
+                description = description,
+                selectedDate = selectedDate,
+                selectedTime = selectedTime,
+                selectedTheme = selectedTheme,
+                budget = budget,
+                location = location,
+                selectedUsers = selectedUsers
+            )
+        }
+    }
+
+    LaunchedEffect(expenseData) {
+        viewModel.updateExpenseSummary(
+            hasExpenses = expenseData.items.any { it.name.isNotBlank() || it.price.isNotBlank() },
+            totalCost = expenseData.totalCost,
+            costPerPerson = expenseData.costPerPerson
+        )
+    }
+
+    // Handle successful event creation
+    LaunchedEffect(createEventState) {
+        when (createEventState) {
+            is CreateEventState.Success -> {
+                // Clear expense data when event is successfully created
+                expenseViewModel.clearAllData()
+
+                // Use the context variable here
+                Toast.makeText(context, "Event created successfully!", Toast.LENGTH_SHORT).show()
+                // Navigate back to home screen
+                navController.popBackStack(Screen.Main.route, false)
+            }
+            else -> {}
+        }
+    }
+
+    // Define themeColors inside composable
     val themeColors = listOf(
         "#4FC3F7", // Pastel Blue
         "#FFF176", // Pastel Yellow
@@ -97,23 +120,7 @@ fun CreateEventScreen(navController: NavController) {
         "#F48FB1"  // Pastel Pink
     )
 
-// Replace your LaunchedEffect with this
-    val savedLocation by navController.currentBackStackEntry
-        ?.savedStateHandle
-        ?.getStateFlow("selectedLocation", "")
-        ?.collectAsState() ?: remember { mutableStateOf("") }
-
-    LaunchedEffect(savedLocation) {
-        if (savedLocation.isNotEmpty()) {
-            location = savedLocation
-        }
-    }
-
-
-    val context = LocalContext.current
-
     val calendar = Calendar.getInstance()
-
     val datePicker = DatePickerDialog(
         context,
         { _, year, month, day ->
@@ -124,6 +131,31 @@ fun CreateEventScreen(navController: NavController) {
         calendar.get(Calendar.DAY_OF_MONTH)
     )
 
+    // Listen for saved location from SetLocationScreen
+    val savedLocation by navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.getStateFlow("selectedLocation", "")
+        ?.collectAsState() ?: remember { mutableStateOf("") }
+
+    LaunchedEffect(savedLocation) {
+        if (savedLocation.isNotEmpty()) {
+            location = savedLocation
+            // Clear the saved location so it doesn't keep updating
+            navController.currentBackStackEntry?.savedStateHandle?.set("selectedLocation", "")
+        }
+    }
+
+    // Show location saved toast
+    var showLocationSavedToast by remember { mutableStateOf(false) }
+
+    LaunchedEffect(location) {
+        if (location.isNotEmpty() && location != "Click on map to select location") {
+            showLocationSavedToast = true
+            // Auto-hide after 2 seconds
+            delay(2000)
+            showLocationSavedToast = false
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -162,6 +194,38 @@ fun CreateEventScreen(navController: NavController) {
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
+            // Location saved indicator
+            if (showLocationSavedToast) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFE8F5E9)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.baseline_check_circle_24),
+                            contentDescription = "Location Saved",
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "✓ Location has been selected",
+                            color = Color(0xFF4CAF50),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
             // Event Image Upload Section
             Card(
                 modifier = Modifier
@@ -242,7 +306,6 @@ fun CreateEventScreen(navController: NavController) {
                     }
                 )
             }
-
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -340,8 +403,6 @@ fun CreateEventScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Spacer(modifier = Modifier.height(24.dp))
-
             // Edit/add expenses
             Button(
                 onClick = {
@@ -356,16 +417,121 @@ fun CreateEventScreen(navController: NavController) {
                     contentColor = Color.Black
                 )
             ) {
-                Text(
-                    text = "Edit Expenses",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (expenseSummary.hasExpenses) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.baseline_check_circle_24),
+                            contentDescription = "Expenses Added",
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Edit Expenses (${expenseSummary.totalCost})",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    } else {
+                        Text(
+                            text = "Edit Expenses",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            // Show expense summary if exists
+            if (expenseSummary.hasExpenses) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFE8F5E9).copy(alpha = 0.5f)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Expense Summary:",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                        Text(
+                            text = "Total: $${expenseSummary.totalCost} • Per Person: $${expenseSummary.costPerPerson}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF4CAF50)
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-// Set Location Button - Navigates to separate screen
+            // Show selected location
+            if (location.isNotEmpty() && location != "Click on map to select location") {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            navController.navigate(Screen.SetLocation.route)
+                        },
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFE8F5E9)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.baseline_location_on_24),
+                            contentDescription = "Location",
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "Selected Location:",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                            Text(
+                                text = location,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 2,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Change",
+                            color = Color(0xFF1976D2),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Set Location Button
             Button(
                 onClick = {
                     navController.navigate(Screen.SetLocation.route)
@@ -379,11 +545,26 @@ fun CreateEventScreen(navController: NavController) {
                     contentColor = Color.White
                 )
             ) {
-                Text("Set Location")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.baseline_location_on_24),
+                        contentDescription = "Location",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (location.isNotEmpty() && location != "Click on map to select location") {
+                            "Change Location"
+                        } else {
+                            "Set Location"
+                        }
+                    )
+                }
             }
-
-
-
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -391,17 +572,7 @@ fun CreateEventScreen(navController: NavController) {
             Button(
                 onClick = {
                     if (currentUser != null) {
-                        viewModel.createEvent(
-                            title = eventName,
-                            description = description,
-                            date = selectedDate,
-                            time = selectedTime,
-                            themeColor = selectedTheme,
-                            budget = budget.toDoubleOrNull() ?: 0.0,
-                            location = location,
-                            creatorId = currentUser.uid,
-                            invitedUserIds = selectedUsers.map { it.id }
-                        )
+                        viewModel.createEvent(creatorId = currentUser.uid)
                     }
                 },
                 modifier = Modifier
@@ -431,7 +602,7 @@ fun CreateEventScreen(navController: NavController) {
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             }
-        }
+        } // <-- This closes the main Column
 
         // User Selection Dialog
         if (showUserSelection) {
@@ -447,8 +618,7 @@ fun CreateEventScreen(navController: NavController) {
                 }
             )
         }
-
-    }
+    } // <-- This closes the Scaffold
 }
 
 @Composable
@@ -467,7 +637,7 @@ fun UserSelectionDialog(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(500.dp), // Increased height
+                .height(500.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(
@@ -480,7 +650,6 @@ fun UserSelectionDialog(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Use LazyColumn instead of LazyRow for better mobile experience
                 LazyColumn(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp)

@@ -22,10 +22,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -59,6 +60,8 @@ import week11.st548490.finalproject.R
 import week11.st548490.finalproject.data.models.Event
 import week11.st548490.finalproject.navigation.Screen
 import week11.st548490.finalproject.ui.auth.AuthStateHandler
+import week11.st548490.finalproject.ui.events.InvitationViewModel
+import androidx.compose.material3.Button
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,12 +70,16 @@ fun MainScreen(
     authStateHandler: AuthStateHandler
 ) {
     val viewModel: MainViewModel = viewModel()
+    val invitationViewModel: InvitationViewModel = viewModel()
+
     val events by viewModel.events.collectAsState()
+    val pendingInvitations by invitationViewModel.pendingInvitations.collectAsState()
     val currentUser by authStateHandler.currentUser.collectAsState()
 
     LaunchedEffect(currentUser) {
         currentUser?.uid?.let { userId ->
             viewModel.loadUserEvents(userId)
+            invitationViewModel.loadPendingInvitations()
         }
     }
 
@@ -116,13 +123,27 @@ fun MainScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        navController.navigate(Screen.Notifications.route)
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = "Notifications"
-                        )
+                    // Notifications button with badge for pending invitations
+                    BadgedBox(
+                        badge = {
+                            if (pendingInvitations.isNotEmpty()) {
+                                Badge {
+                                    Text(
+                                        text = pendingInvitations.size.toString(),
+                                        fontSize = 10.sp
+                                    )
+                                }
+                            }
+                        }
+                    ) {
+                        IconButton(onClick = {
+                            navController.navigate(Screen.Invitations.route)
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "Invitations"
+                            )
+                        }
                     }
                 }
             )
@@ -135,18 +156,48 @@ fun MainScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
+                    // Home Button
                     IconButton(onClick = { /* Already on home */ }) {
-                        Icon(Icons.Default.Home, contentDescription = "Home", tint = Color.Black)
+                        Icon(
+                            Icons.Default.Home,
+                            contentDescription = "Home",
+                            tint = Color.Black
+                        )
                     }
-                    IconButton(onClick = {
-                        navController.navigate(Screen.Notifications.route)
-                    }) {
-                        Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = Color.Gray)
+
+                    // Invitations Button with badge
+                    BadgedBox(
+                        badge = {
+                            if (pendingInvitations.isNotEmpty()) {
+                                Badge {
+                                    Text(
+                                        text = pendingInvitations.size.toString(),
+                                        fontSize = 8.sp
+                                    )
+                                }
+                            }
+                        }
+                    ) {
+                        IconButton(onClick = {
+                            navController.navigate(Screen.Invitations.route)
+                        }) {
+                            Icon(
+                                Icons.Default.Notifications,
+                                contentDescription = "Invitations",
+                                tint = if (pendingInvitations.isNotEmpty()) Color.Black else Color.Gray
+                            )
+                        }
                     }
+
+                    // Profile Button
                     IconButton(onClick = {
                         navController.navigate(Screen.Profile.route)
                     }) {
-                        Icon(Icons.Default.AccountCircle, contentDescription = "Profile", tint = Color.Gray)
+                        Icon(
+                            Icons.Default.AccountCircle,
+                            contentDescription = "Profile",
+                            tint = Color.Gray
+                        )
                     }
                 }
             }
@@ -170,6 +221,74 @@ fun MainScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
         ) {
+            // Welcome message
+            currentUser?.let { user ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Welcome back, ${user.displayName ?: "User"}!",
+                    fontSize = 16.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+
+            // Pending invitations alert
+            if (pendingInvitations.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            navController.navigate(Screen.Invitations.route)
+                        },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFE3F2FD)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color(0xFF1976D2), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = pendingInvitations.size.toString(),
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "You have ${pendingInvitations.size} pending invitation${if (pendingInvitations.size > 1) "s" else ""}",
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = "Tap to view and respond",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                        }
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_arrow_right),
+                            contentDescription = "View",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+
             // Search Bar
             Spacer(modifier = Modifier.height(16.dp))
             Box(
@@ -210,29 +329,76 @@ fun MainScreen(
 
             // Events List
             Spacer(modifier = Modifier.height(24.dp))
-            Text(
-                text = "Your Events",
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp,
-                modifier = Modifier.padding(start = 8.dp)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Your Events",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                )
+                // Show total events count
+                Text(
+                    text = "${events.size} events",
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+            }
             Spacer(modifier = Modifier.height(16.dp))
 
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(events.filter {
-                    it.title.contains(searchQuery, ignoreCase = true) || searchQuery.isEmpty()
-                }) { event ->
-                    EventCard(
-                        event = event,
-                        onEditClick = {
-                            navController.navigate("edit_event/${event.id}")
-                        },
-                        onEventClick = {
-                            navController.navigate("event_details/${event.id}")
-                        }
+            if (events.isEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.event),
+                        contentDescription = "No events",
+                        modifier = Modifier.size(80.dp),
+                        tint = Color.LightGray
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "No events yet",
+                        fontSize = 18.sp,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Create your first event or accept an invitation",
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    if (pendingInvitations.isNotEmpty()) {
+                        Button(
+                            onClick = {
+                                navController.navigate(Screen.Invitations.route)
+                            },
+                            modifier = Modifier.padding(horizontal = 32.dp)
+                        ) {
+                            Text("View Invitations")
+                        }
+                    }
+                }
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(events.filter {
+                        it.title.contains(searchQuery, ignoreCase = true) || searchQuery.isEmpty()
+                    }) { event ->
+                        EventCard(
+                            event = event,
+                            onEventClick = {
+                                navController.navigate(Screen.EventDetails.createRoute(event.id))
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -242,7 +408,6 @@ fun MainScreen(
 @Composable
 fun EventCard(
     event: Event,
-    onEditClick: () -> Unit,
     onEventClick: () -> Unit
 ) {
     Card(
@@ -251,27 +416,46 @@ fun EventCard(
             .clickable { onEventClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(android.graphics.Color.parseColor(event.themeColor))
-        )
+            containerColor = Color(android.graphics.Color.parseColor(event.themeColor)).copy(alpha = 0.9f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
-            // Event Image
+            // Event Image/Icon
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp)
+                    .height(100.dp)
                     .background(Color.White),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.event),
                     contentDescription = "Event Image",
-                    modifier = Modifier.size(60.dp),
-                    tint = Color.Unspecified
+                    modifier = Modifier.size(48.dp),
+                    tint = Color(android.graphics.Color.parseColor(event.themeColor))
                 )
+
+                // Creator badge if user is creator
+                if (event.creatorId == viewModel<MainViewModel>().currentUserId) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(8.dp)
+                            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "Creator",
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
 
-            // Event Info with Edit Button
+            // Event Info
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -285,47 +469,65 @@ fun EventCard(
                         text = event.title,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
-                        color = Color.White
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = event.date.toDate().toString().substring(0, 10),
-                        fontSize = 14.sp,
-                        color = Color.White.copy(alpha = 0.9f)
-                    )
-                }
-
-                // Edit and Arrow buttons on right
-                Row(
-                    modifier = Modifier.align(Alignment.CenterEnd),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Edit Button
-                    IconButton(
-                        onClick = onEditClick,
-                        modifier = Modifier
-                            .size(32.dp)
-                            .background(Color.Black.copy(alpha = 0.7f), CircleShape)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Edit Event",
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
+                            painter = painterResource(id = R.drawable.baseline_calendar_month_24),
+                            contentDescription = "Date",
+                            modifier = Modifier.size(14.dp),
+                            tint = Color.White.copy(alpha = 0.9f)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = event.date.toDate().toString().substring(0, 10),
+                            fontSize = 14.sp,
+                            color = Color.White.copy(alpha = 0.9f)
                         )
                     }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    if (event.location.isNotEmpty()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.baseline_location_on_24),
+                                contentDescription = "Location",
+                                modifier = Modifier.size(14.dp),
+                                tint = Color.White.copy(alpha = 0.9f)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = event.location,
+                                fontSize = 12.sp,
+                                color = Color.White.copy(alpha = 0.9f),
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
 
-                    // Arrow Button
+                // Arrow button on right
+                Box(
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                ) {
                     IconButton(
                         onClick = onEventClick,
                         modifier = Modifier
-                            .size(32.dp)
-                            .background(Color.Black.copy(alpha = 0.7f), CircleShape)
+                            .size(36.dp)
+                            .background(Color.Black.copy(alpha = 0.3f), CircleShape)
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_arrow_right),
                             contentDescription = "View Details",
                             tint = Color.White,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -333,3 +535,6 @@ fun EventCard(
         }
     }
 }
+
+
+// Add missing Button composable import

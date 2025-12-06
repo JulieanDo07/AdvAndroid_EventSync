@@ -19,9 +19,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -41,7 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,13 +50,16 @@ import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import week11.st548490.finalproject.R
 import week11.st548490.finalproject.data.models.Event
+import week11.st548490.finalproject.navigation.Screen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventDetailsScreen(navController: NavController, eventId: String?) {
     val viewModel: EventDetailsViewModel = viewModel()
     val event by viewModel.event.collectAsState()
+    val attendeeNames by viewModel.attendeeNames.collectAsState()
     val currentUser = FirebaseAuth.getInstance().currentUser
+    val context = LocalContext.current
 
     LaunchedEffect(eventId) {
         if (eventId != null) {
@@ -93,19 +95,18 @@ fun EventDetailsScreen(navController: NavController, eventId: String?) {
                     }
                 },
                 actions = {
+                    // Only show delete button if current user is the organizer
                     if (currentUser?.uid == event?.creatorId) {
-                        IconButton(onClick = { /* TODO: Edit event */ }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit")
+                        IconButton(
+                            onClick = {
+                                eventId?.let {
+                                    viewModel.deleteEvent(it)
+                                    navController.popBackStack()
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
                         }
-                        IconButton(onClick = {
-                            eventId?.let { viewModel.deleteEvent(it) }
-                            navController.popBackStack()
-                        }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete")
-                        }
-                    }
-                    IconButton(onClick = { /* TODO: Share event */ }) {
-                        Icon(Icons.Default.Share, contentDescription = "Share")
                     }
                 }
             )
@@ -142,17 +143,18 @@ fun EventDetailsScreen(navController: NavController, eventId: String?) {
                         )
                     }
 
-                    // Event Title and Date
+                    // Event Title and Date with added padding
                     Column(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
-                            .padding(16.dp)
+                            .padding(horizontal = 16.dp, vertical = 32.dp)
                     ) {
                         Text(
                             text = eventData.title,
                             color = Color.White,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 8.dp)
                         )
                         Text(
                             text = "${eventData.date.toDate()} at ${eventData.time}",
@@ -168,7 +170,7 @@ fun EventDetailsScreen(navController: NavController, eventId: String?) {
                         .fillMaxWidth()
                         .padding(16.dp)
                 ) {
-                    // Description
+                    // Description Card
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
@@ -180,9 +182,9 @@ fun EventDetailsScreen(navController: NavController, eventId: String?) {
                             Text(
                                 text = "Description",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
+                                fontSize = 18.sp,
+                                modifier = Modifier.padding(bottom = 8.dp)
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = eventData.description,
                                 fontSize = 16.sp,
@@ -191,65 +193,9 @@ fun EventDetailsScreen(navController: NavController, eventId: String?) {
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    // Budget Information
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Card(
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "Total Budget",
-                                    fontSize = 14.sp,
-                                    color = Color.Gray
-                                )
-                                Text(
-                                    text = "$${eventData.budget}",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(16.dp))
-
-                        val perPerson = if (eventData.members.isNotEmpty()) {
-                            eventData.budget / eventData.members.size
-                        } else 0.0
-
-                        Card(
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "Per Person",
-                                    fontSize = 14.sp,
-                                    color = Color.Gray
-                                )
-                                Text(
-                                    text = "$${String.format("%.2f", perPerson)}",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Location
+                    // Location Card
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
@@ -257,30 +203,49 @@ fun EventDetailsScreen(navController: NavController, eventId: String?) {
                         Column(
                             modifier = Modifier.padding(16.dp)
                         ) {
-                            Text(
-                                text = "Location",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    Icons.Default.Place,
+                                    contentDescription = "Location",
+                                    tint = Color(android.graphics.Color.parseColor(eventData.themeColor)),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Location",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
                             Text(
                                 text = eventData.location.ifEmpty { "Location not set" },
                                 fontSize = 16.sp,
-                                color = Color.Gray
+                                color = Color.Gray,
+                                modifier = Modifier.padding(bottom = 12.dp)
                             )
-                            Spacer(modifier = Modifier.height(12.dp))
+
                             Button(
-                                onClick = { /* TODO: Open in Maps */ },
-                                modifier = Modifier.fillMaxWidth()
+                                onClick = {
+                                    // Open map screen with event location
+                                    navController.navigate(Screen.MapScreen.createRoute(eventData.location))
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp)
                             ) {
-                                Text("View on Map")
+                                Text("View on Map & Get Directions")
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    // Attendees
+                    // Attendees Card - Show names of people invited
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
@@ -291,72 +256,117 @@ fun EventDetailsScreen(navController: NavController, eventId: String?) {
                             Text(
                                 text = "Attendees (${eventData.members.size})",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
+                                fontSize = 18.sp,
+                                modifier = Modifier.padding(bottom = 12.dp)
                             )
-                            Spacer(modifier = Modifier.height(12.dp))
 
-                            // Simple attendee list - you can expand this
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                repeat(eventData.members.size.coerceAtMost(5)) { index ->
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(CircleShape)
-                                            .background(Color(android.graphics.Color.parseColor(eventData.themeColor)).copy(alpha = 0.3f)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Person,
-                                            contentDescription = "Attendee",
-                                            tint = Color(android.graphics.Color.parseColor(eventData.themeColor))
-                                        )
+                            // Display member names
+                            if (eventData.members.isNotEmpty()) {
+                                Column {
+                                    eventData.members.forEachIndexed { index, memberId ->
+                                        val userName = attendeeNames[memberId] ?: "Loading..."
+                                        val isOrganizer = memberId == eventData.creatorId
+
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 8.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(36.dp)
+                                                    .clip(CircleShape)
+                                                    .background(
+                                                        Color(android.graphics.Color.parseColor(eventData.themeColor))
+                                                            .copy(alpha = 0.3f)
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Person,
+                                                    contentDescription = "Attendee",
+                                                    tint = Color(android.graphics.Color.parseColor(eventData.themeColor)),
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Text(
+                                                text = userName,
+                                                fontSize = 16.sp,
+                                                fontWeight = if (isOrganizer) FontWeight.Bold else FontWeight.Normal
+                                            )
+
+                                            // Show "Organizer" badge next to creator
+                                            if (isOrganizer) {
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Box(
+                                                    modifier = Modifier
+                                                        .background(
+                                                            Color(android.graphics.Color.parseColor(eventData.themeColor)),
+                                                            shape = RoundedCornerShape(4.dp)
+                                                        )
+                                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "Organizer",
+                                                        fontSize = 12.sp,
+                                                        color = Color.White,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
                                 }
-                                if (eventData.members.size > 5) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(CircleShape)
-                                            .background(Color.LightGray),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = "+${eventData.members.size - 5}",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
+                            } else {
+                                Text(
+                                    text = "No attendees yet",
+                                    fontSize = 16.sp,
+                                    color = Color.Gray,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                )
                             }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Action Buttons
-                    if (currentUser?.uid != eventData.creatorId) {
-                        Row(
+                    // Add a message for invited users who haven't accepted yet
+                    val currentUserId = currentUser?.uid
+                    if (currentUserId != null && eventData.pendingInvites.contains(currentUserId)) {
+                        Card(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFFFF3E0)
+                            )
                         ) {
-                            Button(
-                                onClick = { /* TODO: RSVP functionality */ },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
+                            Column(
+                                modifier = Modifier.padding(16.dp)
                             ) {
-                                Text("Accept Invitation")
-                            }
-                            Button(
-                                onClick = { /* TODO: Decline functionality */ },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                    containerColor = Color.Gray
+                                Text(
+                                    text = "📨 Invitation Pending",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    modifier = Modifier.padding(bottom = 8.dp)
                                 )
-                            ) {
-                                Text("Decline")
+                                Text(
+                                    text = "You have been invited to this event. Please accept the invitation from your notifications to view full details.",
+                                    fontSize = 14.sp,
+                                    color = Color.Gray,
+                                    modifier = Modifier.padding(bottom = 12.dp)
+                                )
+
+                                Button(
+                                    onClick = {
+                                        navController.navigate(Screen.Invitations.route)
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text("Go to Invitations")
+                                }
                             }
                         }
                     }
@@ -368,7 +378,37 @@ fun EventDetailsScreen(navController: NavController, eventId: String?) {
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Event not found")
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.event),
+                        contentDescription = "Event not found",
+                        modifier = Modifier.size(64.dp),
+                        tint = Color.LightGray
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "Event not found",
+                        fontSize = 18.sp,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "You may need to accept the invitation first",
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = {
+                            navController.navigate(Screen.Invitations.route)
+                        }
+                    ) {
+                        Text("Check Invitations")
+                    }
+                }
             }
         }
     }
