@@ -20,7 +20,8 @@ sealed class Screen(val route: String) {
     object Profile : Screen("profile")
     // Add argument for selected location
 
-
+    // Location Screen - Add this
+    object SetLocation : Screen("set_location")
 
 }
 

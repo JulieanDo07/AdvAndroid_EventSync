@@ -27,6 +27,7 @@ import week11.st548490.finalproject.ui.events.EditEventScreen
 import week11.st548490.finalproject.ui.events.EventDetailsScreen
 import week11.st548490.finalproject.ui.expenses.AddExpenseScreen
 import week11.st548490.finalproject.ui.expenses.ExpenseListScreen
+import week11.st548490.finalproject.ui.location.SetLocationScreen
 import week11.st548490.finalproject.ui.main.MainScreen
 import week11.st548490.finalproject.ui.notifications.NotificationsScreen
 import week11.st548490.finalproject.ui.profile.ProfileScreen
@@ -132,5 +133,13 @@ fun EventSyncApp() {
             val eventId = backStackEntry.arguments?.getString("eventId")
             EditEventScreen(navController = navController, eventId = eventId ?: "")
         }
+
+        // Set Location screen
+        composable(Screen.SetLocation.route) {
+            SetLocationScreen(navController = navController)
+        }
+
+
+
     }
 }

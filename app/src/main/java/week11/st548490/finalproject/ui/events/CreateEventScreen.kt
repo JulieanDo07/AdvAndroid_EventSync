@@ -1,7 +1,6 @@
 package week11.st548490.finalproject.ui.events
 
-
-
+import androidx.compose.ui.window.Dialog
 import android.app.DatePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,8 +22,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -65,14 +62,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.rememberCameraPositionState
 import week11.st548490.finalproject.R
 import week11.st548490.finalproject.data.models.User
 import week11.st548490.finalproject.navigation.Screen
@@ -90,7 +80,6 @@ fun CreateEventScreen(navController: NavController) {
         viewModel.loadUsers()
     }
 
-
     var eventName by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf("") }
@@ -98,7 +87,6 @@ fun CreateEventScreen(navController: NavController) {
     var selectedTheme by remember { mutableStateOf("#4FC3F7") } // Pastel blue default
     var budget by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
-
     var showUserSelection by remember { mutableStateOf(false) }
     var selectedUsers by remember { mutableStateOf<List<User>>(emptyList()) }
 
@@ -109,16 +97,16 @@ fun CreateEventScreen(navController: NavController) {
         "#F48FB1"  // Pastel Pink
     )
 
+// Replace your LaunchedEffect with this
+    val savedLocation by navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.getStateFlow("selectedLocation", "")
+        ?.collectAsState() ?: remember { mutableStateOf("") }
 
-
-    LaunchedEffect(navController) {
-        navController.currentBackStackEntry?.savedStateHandle
-            ?.getStateFlow("selectedLocation", "")
-            ?.collect { newLocation ->
-                if (newLocation.isNotEmpty()) {
-                    location = newLocation
-                }
-            }
+    LaunchedEffect(savedLocation) {
+        if (savedLocation.isNotEmpty()) {
+            location = savedLocation
+        }
     }
 
 
@@ -352,34 +340,6 @@ fun CreateEventScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-//            // Budget and Per Person Share
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                horizontalArrangement = Arrangement.spacedBy(16.dp)
-//            ) {
-//                OutlinedTextField(
-//                    value = budget,
-//                    onValueChange = { budget = it },
-//                    modifier = Modifier.weight(1f),
-//                    placeholder = { Text("Budget ($)") },
-//                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-//                    shape = RoundedCornerShape(12.dp)
-//                )
-//
-//                val perPersonShare = if (budget.isNotEmpty() && selectedUsers.isNotEmpty()) {
-//                    String.format("%.2f", budget.toDoubleOrNull() ?: 0.0 / (selectedUsers.size + 1))
-//                } else "0.00"
-//
-//                OutlinedTextField(
-//                    value = "$$perPersonShare",
-//                    onValueChange = { /* Read-only */ },
-//                    modifier = Modifier.weight(1f),
-//                    placeholder = { Text("Per Person") },
-//                    readOnly = true,
-//                    shape = RoundedCornerShape(12.dp)
-//                )
-//            }
-
             Spacer(modifier = Modifier.height(24.dp))
 
             // Edit/add expenses
@@ -405,13 +365,11 @@ fun CreateEventScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Set Location Button
-            var showMapDialog by remember { mutableStateOf(false) }
-            var location by remember { mutableStateOf("") }
-            var selectedLatLng by remember { mutableStateOf<LatLng?>(null) }
-
+// Set Location Button - Navigates to separate screen
             Button(
-                onClick = { showMapDialog = true },
+                onClick = {
+                    navController.navigate(Screen.SetLocation.route)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
@@ -424,55 +382,6 @@ fun CreateEventScreen(navController: NavController) {
                 Text("Set Location")
             }
 
-            if (showMapDialog) {
-                Dialog(onDismissRequest = { showMapDialog = false }) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(400.dp),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Column {
-                            val cameraPositionState = rememberCameraPositionState {
-                                position = LatLng(43.6532, -79.3832).let {
-                                    CameraPosition.fromLatLngZoom(it, 10f)
-                                }
-                            }
-
-                            GoogleMap(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .weight(1f),
-                                cameraPositionState = cameraPositionState,
-                                onMapClick = { latLng ->
-                                    selectedLatLng = latLng
-                                }
-                            ) {
-                                selectedLatLng?.let {
-                                    Marker(
-                                        state = MarkerState(it),
-                                        title = "Selected Location"
-                                    )
-                                }
-                            }
-
-                            Button(
-                                onClick = {
-                                    selectedLatLng?.let {
-                                        location = "${it.latitude},${it.longitude}"
-                                    }
-                                    showMapDialog = false
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(8.dp)
-                            ) {
-                                Text("Confirm Location")
-                            }
-                        }
-                    }
-                }
-            }
 
 
 

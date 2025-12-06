@@ -2,6 +2,7 @@ package week11.st548490.finalproject.ui.events
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +26,15 @@ class CreateEventViewModel(
     val createEventState: StateFlow<CreateEventState> = _createEventState.asStateFlow()
 
     private val firestore = FirebaseFirestore.getInstance()
+
+    // SIMPLIFIED: Just store location string for now
+    private val _selectedLocation = MutableStateFlow("")
+    val selectedLocation: StateFlow<String> = _selectedLocation.asStateFlow()
+
+    // SIMPLIFIED function to save location (just string address)
+    fun saveLocation(address: String) {
+        _selectedLocation.value = address
+    }
 
     fun loadUsers() {
         viewModelScope.launch {
@@ -79,10 +89,12 @@ class CreateEventViewModel(
                     creatorId = creatorId,
                     members = allMembers,
                     budget = budget,
-                    location = location
+                    location = location,
+
                 )
 
                 val eventId = eventRepository.createEvent(event)
+                _selectedLocation.value = ""
                 _createEventState.value = CreateEventState.Success(eventId)
             } catch (e: Exception) {
                 _createEventState.value = CreateEventState.Error(e.message ?: "Failed to create event")
@@ -115,6 +127,7 @@ class CreateEventViewModel(
         location: String,
         invitedUserIds: List<String>
     ) {
+
         viewModelScope.launch {
             _createEventState.value = CreateEventState.Loading
             try {
@@ -136,6 +149,9 @@ class CreateEventViewModel(
         }
     }
 }
+
+
+
 
 sealed class CreateEventState {
     object Idle : CreateEventState()
