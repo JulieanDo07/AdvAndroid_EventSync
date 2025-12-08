@@ -123,13 +123,21 @@ fun EventSyncApp() {
         }
 
         // Expense Screens
-        composable(Screen.Expenses.route) {
-            ExpenseListScreen(navController)
+        composable(
+            route = "expenses/{eventId}",
+            arguments = listOf(navArgument("eventId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
+            ExpenseListScreen(navController = navController, eventId = eventId)
+        }
+        composable(
+            route = "add_expense/{eventId}",
+            arguments = listOf(navArgument("eventId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
+            AddExpenseScreen(navController = navController, eventId = eventId)
         }
 
-        composable(Screen.AddExpense.route) {
-            AddExpenseScreen(navController)
-        }
 
         // Notifications Screen (if different from invitations)
         composable(Screen.Notifications.route) {

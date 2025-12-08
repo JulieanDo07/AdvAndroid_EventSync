@@ -15,8 +15,13 @@ sealed class Screen(val route: String) {
     }
 
     // Expenses Section - Juliean
-    object Expenses : Screen("expenses")
-    object AddExpense : Screen("add_expense")
+    object Expenses : Screen("expenses/{eventId}") {
+        fun createRoute(eventId: String) = "expenses/$eventId"
+    }
+
+    object AddExpense : Screen("add_expense/{eventId}") {
+        fun createRoute(eventId: String) = "add_expense/$eventId"
+    }
 
     // Notifications and Profile
     object Notifications : Screen("notifications")

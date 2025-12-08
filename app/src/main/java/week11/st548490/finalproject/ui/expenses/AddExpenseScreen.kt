@@ -11,8 +11,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -28,17 +27,26 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import week11.st548490.finalproject.ui.events.EventExpenseViewModel
 import kotlinx.coroutines.delay
+import week11.st548490.finalproject.ui.expenses.EventExpenseViewModel
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddExpenseScreen(navController: NavController) {
-    // Use EventExpenseViewModel instead of ExpenseViewModel
-    val expenseViewModel: EventExpenseViewModel = viewModel()
+fun AddExpenseScreen(
+    navController: NavController,
+    eventId: String,
+    expenseViewModel: EventExpenseViewModel = viewModel()
+)
+
+{
     val expenseData by expenseViewModel.expenseData.collectAsState()
 
-    // Local state for attendees
+    // Load existing expense for this event
+    LaunchedEffect(eventId) {
+        expenseViewModel.loadExpenseForEvent(eventId)
+    }
+
     val allPossibleAttendees = listOf(
         "Lando Norris",
         "Oscar Piastri",
@@ -50,9 +58,7 @@ fun AddExpenseScreen(navController: NavController) {
 
     var showAttendeeDialog by remember { mutableStateOf(false) }
     var showSaveSuccess by remember { mutableStateOf(false) }
-    val context = LocalContext.current
 
-    // Handle save success feedback
     LaunchedEffect(showSaveSuccess) {
         if (showSaveSuccess) {
             delay(1500)
@@ -60,18 +66,20 @@ fun AddExpenseScreen(navController: NavController) {
         }
     }
 
+    //Main UI screen
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Add Expense", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
         }
     ) { innerPadding ->
+        //to scroll
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -79,7 +87,8 @@ fun AddExpenseScreen(navController: NavController) {
                 .padding(innerPadding)
                 .padding(16.dp)
         ) {
-            // Title of Cost Sheet
+
+            // Expense title
             OutlinedTextField(
                 value = expenseData.title,
                 onValueChange = { expenseViewModel.updateTitle(it) },
@@ -87,11 +96,22 @@ fun AddExpenseScreen(navController: NavController) {
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
-            // Items table
+            // Divide by how many people field
+            OutlinedTextField(
+                value = expenseViewModel.divideByString(),
+                onValueChange = { expenseViewModel.updateDivideBy(it) },
+                label = { Text("Divided By (People)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            // Items list
             Text("Expense Items", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
 
             LazyColumn(
                 modifier = Modifier
@@ -100,6 +120,8 @@ fun AddExpenseScreen(navController: NavController) {
                     .border(1.dp, Color.LightGray)
             ) {
                 items(expenseData.items) { item ->
+                    val index = expenseData.items.indexOf(item)
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -109,7 +131,6 @@ fun AddExpenseScreen(navController: NavController) {
                         OutlinedTextField(
                             value = item.name,
                             onValueChange = {
-                                val index = expenseData.items.indexOf(item)
                                 expenseViewModel.updateItemName(index, it)
                             },
                             placeholder = { Text("Item name") },
@@ -117,47 +138,43 @@ fun AddExpenseScreen(navController: NavController) {
                         )
 
                         OutlinedTextField(
-                            value = item.price,
+                            value = item.price.toString(),
                             onValueChange = {
-                                val index = expenseData.items.indexOf(item)
                                 expenseViewModel.updateItemPrice(index, it)
                             },
                             placeholder = { Text("Price") },
-                            modifier = Modifier.weight(1f),
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Number
-                            )
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
             }
-
-            // Add item button
+            // button to add new item
             Button(
                 onClick = { expenseViewModel.addItem() },
                 modifier = Modifier.padding(top = 8.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Item")
-                Spacer(modifier = Modifier.width(8.dp))
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
                 Text("Add Item")
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
             // Total cost
             OutlinedTextField(
-                value = "$${expenseData.totalCost}",
+                value = String.format(Locale.US, "$%.2f", expenseData.totalCost),
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Total Cost") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
-            // Add attendees section
+            // Select attendees
             Text("Split With", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
 
             Box(
                 modifier = Modifier
@@ -169,28 +186,23 @@ fun AddExpenseScreen(navController: NavController) {
             ) {
                 Text("Select Attendees", fontWeight = FontWeight.Medium)
             }
-
-            // Show selected attendees
+                //show list of attendees
             if (expenseData.attendees.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
                 Column {
                     expenseData.attendees.forEach { attendee ->
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(attendee)
                             IconButton(
                                 onClick = {
-                                    // Remove attendee
-                                    val newList = expenseData.attendees.toMutableList()
-                                    newList.remove(attendee)
-                                    expenseViewModel.updateAttendees(newList)
-                                },
-                                modifier = Modifier.size(24.dp)
+                                    val updated = expenseData.attendees.toMutableList()
+                                    updated.remove(attendee)
+                                    expenseViewModel.updateAttendees(updated)
+                                }
                             ) {
                                 Icon(Icons.Default.Close, contentDescription = "Remove")
                             }
@@ -199,54 +211,43 @@ fun AddExpenseScreen(navController: NavController) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
             // Cost per person
             OutlinedTextField(
-                value = "$${expenseData.costPerPerson}",
+                value = String.format(Locale.US, "$%.2f", expenseData.costPerPerson),
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Cost Per Person") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(Modifier.height(24.dp))
 
-            // Save success message
             if (showSaveSuccess) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFE8F5E9)
-                    )
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "✓ Expense saved successfully!",
-                            color = Color(0xFF4CAF50),
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                    //save successfully pop up
+                    Text(
+                        "✓ Expense saved successfully!",
+                        color = Color(0xFF4CAF50),
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(12.dp)
+                    )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(Modifier.height(12.dp))
             }
-
+            //save button
             Button(
                 onClick = {
-                    showSaveSuccess = true
+                    expenseViewModel.saveExpense(eventId) { success ->
+                        showSaveSuccess = success
+                    }
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(55.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF7C4DFF),
-                    contentColor = Color.White
-                ),
+                modifier = Modifier.fillMaxWidth().height(55.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C4DFF)),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Save Expense", fontWeight = FontWeight.Bold, fontSize = 16.sp)
@@ -254,118 +255,86 @@ fun AddExpenseScreen(navController: NavController) {
         }
     }
 
-    // Attendee selection dialog
-    if (showAttendeeDialog) {
-        AttendeeSelectionDialog(
-            attendees = allPossibleAttendees,
-            selected = expenseData.attendees,
-            onConfirm = { newList ->
-                expenseViewModel.updateAttendees(newList)
-                showAttendeeDialog = false
-            },
-            onDismiss = { showAttendeeDialog = false }
-        )
-    }
-}
+    //dialog pop for attendees
+    @Composable
+    fun AttendeeSelectionDialog(
+        attendees: List<String>,
+        selected: List<String>,
+        onConfirm: (List<String>) -> Unit,
+        onDismiss: () -> Unit
+    ) {
+        var tempSelected by remember { mutableStateOf(selected.toMutableList()) }
 
-@Composable
-fun AttendeeSelectionDialog(
-    attendees: List<String>,
-    selected: List<String>,
-    onConfirm: (List<String>) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var tempSelected by remember { mutableStateOf(selected.toMutableList()) }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(500.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFFF4EFFA)
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
+        Dialog(onDismissRequest = onDismiss) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(500.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF4EFFA))
             ) {
-                Text(
-                    text = "Select Attendees",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
+                Column(modifier = Modifier.padding(16.dp)) {
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Text("Select Attendees", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Spacer(Modifier.height(16.dp))
 
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(attendees) { person ->
-                        val isSelected = tempSelected.contains(person)
+                    LazyColumn(modifier = Modifier.weight(1f)) {
+                        items(attendees) { person ->
+                            val isSelected = tempSelected.contains(person)
 
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(55.dp)
-                                .clickable {
-                                    if (isSelected) {
-                                        tempSelected.remove(person)
-                                    } else {
-                                        tempSelected.add(person)
-                                    }
-                                },
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isSelected)
-                                    Color(0xFFBAE6FD)
-                                else
-                                    Color(0xFFF5F5F5)
-                            )
-                        ) {
-                            Row(
+                            Card(
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Add,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(22.dp)
+                                    .fillMaxWidth()
+                                    .height(55.dp)
+                                    .clickable {
+                                        if (isSelected) tempSelected.remove(person)
+                                        else tempSelected.add(person)
+                                    },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isSelected) Color(0xFFBAE6FD)
+                                    else Color(0xFFF5F5F5)
                                 )
-                                Spacer(Modifier.width(12.dp))
-                                Text(person, fontWeight = FontWeight.Medium)
-                                Spacer(modifier = Modifier.weight(1f))
-                                if (isSelected) {
-                                    Text("✓", color = Color.Green, fontWeight = FontWeight.Bold)
+                            ) {
+                                // cancel, confirm  buttons
+                                Row(
+                                    Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(person)
+                                    Spacer(Modifier.weight(1f))
+                                    if (isSelected) Text("✓", color = Color.Green)
                                 }
                             }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(Modifier.height(16.dp))
 
-                // Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Button(
-                        onClick = onDismiss,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Cancel")
-                    }
-                    Button(
-                        onClick = { onConfirm(tempSelected.toList()) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C4DFF))
-                    ) {
-                        Text("Confirm (${tempSelected.size} selected)")
+                        Button(onClick = onDismiss) { Text("Cancel") }
+                        Button(onClick = { onConfirm(tempSelected.toList()) }) {
+                            Text("Confirm (${tempSelected.size})")
+                        }
                     }
                 }
             }
         }
+    }
+
+    if (showAttendeeDialog) {
+        AttendeeSelectionDialog(
+            attendees = allPossibleAttendees,
+            selected = expenseData.attendees,
+            onConfirm = { selectedList ->
+                expenseViewModel.updateAttendees(selectedList)
+                showAttendeeDialog = false
+            },
+            onDismiss = { showAttendeeDialog = false }
+        )
     }
 }

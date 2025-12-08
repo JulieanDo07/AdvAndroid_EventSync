@@ -7,12 +7,23 @@ import week11.st548490.finalproject.data.models.Expense
 class ExpenseRepository {
 
     private val db = FirebaseFirestore.getInstance()
-    private val expenseCollection = db.collection("expenses")
 
+    // Helper: path to the expense subcollection inside an event
+    private fun eventExpenseCollection(eventId: String) =
+        db.collection("events")
+            .document(eventId)
+            .collection("expenses")
+
+    // ---------------------------
+    // SAVE NEW EXPENSE
+    // ---------------------------
     suspend fun saveExpense(expense: Expense): String? {
         return try {
-            val docRef = expenseCollection.document()
+            val collection = eventExpenseCollection(expense.eventId)
+
+            val docRef = collection.document()
             val newExpense = expense.copy(id = docRef.id)
+
             docRef.set(newExpense).await()
             docRef.id
         } catch (e: Exception) {
@@ -21,10 +32,12 @@ class ExpenseRepository {
         }
     }
 
+    // ---------------------------
+    // GET EXPENSE FOR AN EVENT
+    // ---------------------------
     suspend fun getExpenseByEventId(eventId: String): Expense? {
         return try {
-            val query = expenseCollection
-                .whereEqualTo("eventId", eventId)
+            val query = eventExpenseCollection(eventId)
                 .limit(1)
                 .get()
                 .await()
@@ -39,11 +52,16 @@ class ExpenseRepository {
         }
     }
 
+    // ---------------------------
+    // UPDATE EXPENSE
+    // ---------------------------
     suspend fun updateExpense(expense: Expense): Boolean {
         return try {
-            expenseCollection.document(expense.id)
+            eventExpenseCollection(expense.eventId)
+                .document(expense.id)
                 .set(expense)
                 .await()
+
             true
         } catch (e: Exception) {
             e.printStackTrace()

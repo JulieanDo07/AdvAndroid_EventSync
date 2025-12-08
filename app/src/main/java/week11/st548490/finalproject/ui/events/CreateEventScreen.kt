@@ -39,6 +39,8 @@ import week11.st548490.finalproject.R
 import week11.st548490.finalproject.data.models.User
 import week11.st548490.finalproject.navigation.Screen
 import java.util.Calendar
+import week11.st548490.finalproject.ui.expenses.EventExpenseViewModel
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEventScreen(navController: NavController) {
@@ -90,9 +92,10 @@ fun CreateEventScreen(navController: NavController) {
 
     LaunchedEffect(expenseData) {
         viewModel.updateExpenseSummary(
-            hasExpenses = expenseData.items.any { it.name.isNotBlank() || it.price.isNotBlank() },
-            totalCost = expenseData.totalCost,
-            costPerPerson = expenseData.costPerPerson
+            hasExpenses = expenseData.items.any { it.name.isNotBlank() || it.price != 0.0
+            },
+            totalCost = expenseData.totalCost.toString(),
+            costPerPerson = expenseData.costPerPerson.toString()
         )
     }
 
